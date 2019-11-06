@@ -1,6 +1,9 @@
 package com.exzray.qrelection;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Toolbar;
@@ -38,8 +41,9 @@ public class MainActivity extends AppCompatActivity {
 
     // view
     private Toolbar mv_toolbar;
-    private TextView mv_date, mv_vote;
+    private TextView mv_date;
     private RecyclerView mv_recycler;
+    private Button mv_signout;
 
     // firebase
     FirebaseAuth fb_auth = FirebaseAuth.getInstance();
@@ -52,8 +56,8 @@ public class MainActivity extends AppCompatActivity {
 
         mv_toolbar = findViewById(R.id.toolbar);
         mv_date = findViewById(R.id.text_date);
-        mv_vote = findViewById(R.id.text_vote);
         mv_recycler = findViewById(R.id.recycler);
+        mv_signout = findViewById(R.id.button_signout);
 
         mc_uid = getIntent().getStringExtra(getString(R.string.FIRESTORE_ELECTION_UID));
         mc_adapter = new CampaignAdapter();
@@ -72,7 +76,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void initUI() {
         setActionBar(mv_toolbar);
-        setTitle(mc_uid);
 
         mv_recycler.setAdapter(mc_adapter);
         mv_recycler.setLayoutManager(mc_layout_manager);
@@ -80,6 +83,17 @@ public class MainActivity extends AppCompatActivity {
         listenToElection();
         listenToCampaign();
         getStudentInfo();
+
+        mv_signout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                fb_auth.signOut();
+
+                Intent intent = new Intent(MainActivity.this, SplashActivity.class);
+                startActivity(intent);
+                finish();
+            }
+        });
     }
 
     private void listenToElection() {
@@ -95,10 +109,8 @@ public class MainActivity extends AppCompatActivity {
 
                             if (election != null) {
                                 String date = "Date: " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(election.getStart());
-                                String vote = "Votes: " + election.getVotes();
 
                                 mv_date.setText(date);
-                                mv_vote.setText(vote);
                             }
                         }
                     }
@@ -138,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
                                 if (snapshot != null) {
                                     Student student = snapshot.toObject(Student.class);
 
-                                    if (student != null){
+                                    if (student != null) {
                                         setTitle("Selamat datang, " + student.getName());
                                     }
                                 }

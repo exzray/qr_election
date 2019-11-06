@@ -10,4 +10,5 @@
     <string name="text_scan_qr_code">Scan a QR Code</string>
     <string name="text_position_finish">Thanks for voting!</string>
     <string name="text_position_zero">Ops, please come back later!</string>
+    <string name="title_sign_out">sign out</string>
 </resources>
