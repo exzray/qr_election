@@ -1,5 +1,6 @@
 package com.exzray.qrelection.adapters;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,47 +12,47 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.exzray.qrelection.R;
-import com.exzray.qrelection.VoteActivity;
+import com.exzray.qrelection.models.Position;
 import com.exzray.qrelection.models.Student;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class CandidateAdapter extends RecyclerView.Adapter<CandidateAdapter.VH> {
 
     // component
-    private OnClickItem onClickItem;
-    private List<String> mc_list = new ArrayList<>();
+    private Context context;
+    private String campaign_path;
+    private Position position;
 
     // firebase
     private FirebaseFirestore fb_firestore = FirebaseFirestore.getInstance();
 
+
+    public CandidateAdapter(Context context, String campaign_path) {
+        this.context = context;
+        this.campaign_path = campaign_path;
+    }
+
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_candidate, parent, false);
+        View view = LayoutInflater.from(context).inflate(R.layout.item_candidate, parent, false);
 
         return new VH(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final VH holder, int position) {
+    public void onBindViewHolder(@NonNull final VH holder, int index) {
 
-        if (holder.itemView.getContext() instanceof VoteActivity) {
-            final VoteActivity activity = (VoteActivity) holder.itemView.getContext();
-            final String candidate_uid = mc_list.get(position);
+        if (position != null) {
+            String str_candidateID = "students/" + position.getCandidates().get(index);
 
-            DocumentReference reference = fb_firestore
-                    .document("students/" + candidate_uid);
-
-            reference
+            fb_firestore
+                    .document(str_candidateID)
                     .get()
-                    .addOnCompleteListener(activity, new OnCompleteListener<DocumentSnapshot>() {
+                    .addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                         @Override
                         public void onComplete(@NonNull Task<DocumentSnapshot> task) {
 
@@ -64,20 +65,7 @@ public class CandidateAdapter extends RecyclerView.Adapter<CandidateAdapter.VH> 
 
                                     if (student != null) {
 
-                                        holder.itemView.setOnClickListener(new View.OnClickListener() {
-                                            @Override
-                                            public void onClick(View v) {
-                                                if (onClickItem != null) onClickItem.voteCandidate(candidate_uid, student);
-                                            }
-                                        });
-
-                                        holder.name.setText(student.getName());
-                                        holder.course.setText(student.getCourse());
-
-                                        Glide
-                                                .with(activity)
-                                                .load(student.getImage())
-                                                .into(holder.profile);
+                                        holder.update(student);
                                     }
                                 }
                             }
@@ -88,17 +76,14 @@ public class CandidateAdapter extends RecyclerView.Adapter<CandidateAdapter.VH> 
 
     @Override
     public int getItemCount() {
-        return mc_list.size();
+        return position != null ? position.getCandidates().size() : 0;
     }
 
-    public void updateList(List<String> updated) {
-        mc_list = updated;
+    public void updateData(Position position) {
+        this.position = position;
         notifyDataSetChanged();
     }
 
-    public void setOnClickItem(OnClickItem clickItem){
-        onClickItem = clickItem;
-    }
 
     class VH extends RecyclerView.ViewHolder {
 
@@ -112,9 +97,22 @@ public class CandidateAdapter extends RecyclerView.Adapter<CandidateAdapter.VH> 
             name = itemView.findViewById(R.id.text_name);
             course = itemView.findViewById(R.id.text_course);
         }
-    }
 
-    public interface OnClickItem {
-        void voteCandidate(String uid, Student student);
+        private void update(Student student) {
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+
+                }
+            });
+
+            name.setText(student.getName());
+            course.setText(student.getCourse());
+
+            Glide
+                    .with(context)
+                    .load(student.getImage())
+                    .into(profile);
+        }
     }
 }

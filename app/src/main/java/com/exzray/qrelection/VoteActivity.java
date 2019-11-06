@@ -1,13 +1,10 @@
 package com.exzray.qrelection;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.Toolbar;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -16,26 +13,22 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.exzray.qrelection.adapters.CandidateAdapter;
 import com.exzray.qrelection.models.Campaign;
 import com.exzray.qrelection.models.Position;
-import com.exzray.qrelection.models.Student;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.firestore.Transaction;
 
 import java.util.List;
 
 public class VoteActivity extends AppCompatActivity {
 
-    // var
-    private String campaign_path = "";
-
     // component
+    private String campaign_path;
     private CandidateAdapter mc_adapter;
     private GridLayoutManager mc_manager;
     private ListenerRegistration mc_campaignListener;
@@ -43,27 +36,39 @@ public class VoteActivity extends AppCompatActivity {
 
     // view
     private Toolbar mv_toolbar;
-    private TextView mv_title;
+    private TextView mv_title, mv_info;
+    private View mv_container1, mv_container2;
     private RecyclerView mv_recycler;
-
 
     // firebase
     private FirebaseAuth fb_auth = FirebaseAuth.getInstance();
     private FirebaseFirestore fb_firestore = FirebaseFirestore.getInstance();
+    private FirebaseUser fb_user = fb_auth.getCurrentUser();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_vote);
 
-        mc_manager = new GridLayoutManager(this, 2);
-        mc_adapter = new CandidateAdapter();
-
         mv_toolbar = findViewById(R.id.toolbar);
+        mv_container1 = findViewById(R.id.container_1);
+        mv_container2 = findViewById(R.id.container_2);
         mv_title = findViewById(R.id.text_title);
         mv_recycler = findViewById(R.id.recycler);
+        mv_info = findViewById(R.id.text_info);
 
-        initUI();
+        // important component
+        mc_manager = new GridLayoutManager(this, 2);
+        campaign_path = getIntent().getStringExtra(getString(R.string.FIRESTORE_CAMPAIGN_PATH));
+
+        if (campaign_path != null && !campaign_path.isEmpty()) {
+            mc_adapter = new CandidateAdapter(this, campaign_path);
+
+            initUI();
+
+        } else onBackPressed();
+
     }
 
     @Override
@@ -75,125 +80,83 @@ public class VoteActivity extends AppCompatActivity {
     }
 
     private void initUI() {
-        campaign_path = getIntent().getStringExtra(getString(R.string.FIRESTORE_CAMPAIGN_PATH));
-
         setActionBar(mv_toolbar);
 
         mv_recycler.setAdapter(mc_adapter);
         mv_recycler.setLayoutManager(mc_manager);
 
-        doJob();
-    }
-
-    private void doJob() {
-        if (!campaign_path.isEmpty()) {
-
-            // code start here
-            listenToCampaign();
-            listenToPosition();
-        } else onBackPressed();
+        listenToCampaign();
+        listenToPosition();
     }
 
     private void listenToCampaign() {
         mc_campaignListener = fb_firestore
                 .document(campaign_path)
-                .addSnapshotListener(new EventListener<DocumentSnapshot>() {
-                    @Override
-                    public void onEvent(@Nullable DocumentSnapshot documentSnapshot, @Nullable FirebaseFirestoreException e) {
-                        if (documentSnapshot != null) {
-                            Campaign campaign = documentSnapshot.toObject(Campaign.class);
-
-                            if (campaign != null) {
-                                setTitle(campaign.getTitle());
-                            }
-                        }
-                    }
-                });
+                .addSnapshotListener(new CampaignListener());
     }
 
     private void listenToPosition() {
         mc_positionListener = fb_firestore
                 .collection(campaign_path + "/positions")
-                .orderBy("arrangement")
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-
-                    @Override
-                    public void onEvent(@Nullable QuerySnapshot queryDocumentSnapshots, @Nullable FirebaseFirestoreException e) {
-
-                        boolean status = false;
-
-                        if (queryDocumentSnapshots != null) {
-                            List<DocumentSnapshot> list = queryDocumentSnapshots.getDocuments();
-
-                            for (DocumentSnapshot snapshot : list) {
-                                status = isVoted(snapshot);
-
-                                if (status) break;
-                            }
-
-                            if (!status) {
-                                Toast.makeText(VoteActivity.this, "You cannot vote for this task anymore", Toast.LENGTH_SHORT).show();
-                                onBackPressed();
-                                finish();
-                            }
-                        }
-                    }
-                });
+                .orderBy("arrangement", Query.Direction.ASCENDING)
+                .addSnapshotListener(new PositionListener());
     }
 
-    private boolean isVoted(final DocumentSnapshot snapshot) {
-        final FirebaseUser user = fb_auth.getCurrentUser();
-        Position position = snapshot.toObject(Position.class);
+    private void filterPosition(List<DocumentSnapshot> list) {
 
-        assert user != null;
+        if (fb_user != null) {
+            int totalPosition = list.size();
+            String user_uid = fb_user.getUid();
 
-        if (position != null) {
+            for (DocumentSnapshot snapshot : list) {
 
-            if (!position.getVotes().containsKey(user.getUid())) {
+                Position position = snapshot.toObject(Position.class);
 
-                mv_title.setText(position.getTitle());
-                mc_adapter.setOnClickItem(new CandidateAdapter.OnClickItem() {
+                // loop stopper
+                if (position != null) {
 
-                    @Override
-                    public void voteCandidate(final String uid, final Student student) {
-                        final DocumentReference ref = snapshot.getReference();
+                    // if user not yet vote for this position
+                    if (!position.getVotes().containsKey(user_uid)) {
+                        mv_container1.setVisibility(View.VISIBLE);
+                        mv_container2.setVisibility(View.GONE);
+                        mc_adapter.updateData(position);
 
-                        new AlertDialog
-                                .Builder(VoteActivity.this)
-                                .setMessage("Are you sure to vote for " + student.getName())
-                                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        fb_firestore.runTransaction(new Transaction.Function<Object>() {
-
-                                            @Nullable
-                                            @Override
-                                            public Object apply(@NonNull Transaction transaction) throws FirebaseFirestoreException {
-                                                final DocumentSnapshot read = transaction.get(ref);
-                                                final Position position1 = read.toObject(Position.class);
-
-                                                if (position1 != null) {
-
-                                                    position1.getVotes().put(user.getUid(), uid);
-                                                    transaction.set(ref, position1);
-                                                }
-
-                                                return null;
-                                            }
-                                        });
-                                    }
-                                })
-                                .setNegativeButton("Not sure", null)
-                                .show();
+                        return;
                     }
-                });
-                mc_adapter.updateList(position.getCandidates());
+                }
+            }
 
-                return true;
+            // when no position available for student to vote
+            mv_container1.setVisibility(View.GONE);
+            mv_container2.setVisibility(View.VISIBLE);
+
+            if (totalPosition != 0) mv_info.setText(R.string.text_position_finish);
+            else mv_info.setText(R.string.text_position_zero);
+        }
+    }
+
+    class CampaignListener implements EventListener<DocumentSnapshot> {
+
+        @Override
+        public void onEvent(@Nullable DocumentSnapshot snapshot, @Nullable FirebaseFirestoreException e) {
+            if (snapshot != null) {
+                Campaign campaign = snapshot.toObject(Campaign.class);
+
+                if (campaign != null) {
+                    setTitle(campaign.getTitle());
+                }
             }
         }
+    }
 
-        return false;
+    class PositionListener implements EventListener<QuerySnapshot> {
+
+        @Override
+        public void onEvent(@Nullable QuerySnapshot queryDocumentSnapshots, @Nullable FirebaseFirestoreException e) {
+            if (queryDocumentSnapshots != null) {
+
+                filterPosition(queryDocumentSnapshots.getDocuments());
+            }
+        }
     }
 }
