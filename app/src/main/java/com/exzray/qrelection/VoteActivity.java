@@ -119,7 +119,10 @@ public class VoteActivity extends AppCompatActivity {
                     if (!position.getVotes().containsKey(user_uid)) {
                         mv_container1.setVisibility(View.VISIBLE);
                         mv_container2.setVisibility(View.GONE);
-                        mc_adapter.updateData(position);
+
+                        mc_adapter.updateData(position, snapshot.getId());
+
+                        mv_title.setText(position.getTitle());
 
                         return;
                     }
