@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "267529258262",
+    "firebase_url": "https://qr-election.firebaseio.com",
+    "project_id": "qr-election",
+    "storage_bucket": "qr-election.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267529258262:android:979936e7f07748847ebc37",
+        "android_client_info": {
+          "package_name": "com.exzray.qrelection"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "267529258262-2n2am0fqokef2402jiqv3r2t20jbgqfq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.exzray.qrelection",
+            "certificate_hash": "c561c0ca70a5a714daa5a1a9ef522c0019f07dd8"
+          }
+        },
+        {
+          "client_id": "267529258262-5kain7hem470166b58l82l9ko8kpab1b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCs7RHET_idJzObJDgNrB2Lmg5Ybh4sI7E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "267529258262-5kain7hem470166b58l82l9ko8kpab1b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
